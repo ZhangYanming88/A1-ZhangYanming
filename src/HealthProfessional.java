@@ -23,16 +23,21 @@ import java.util.regex.Pattern;
  *       roster from the outside.</li>
  * </ul>
  *
+ * <p>The class is {@code abstract}: the service only ever employs professionals who have a
+ * specialty, so a "plain" health professional must not be creatable. Declaring the behaviour
+ * abstract also forces every subclass to state what it does, which keeps the hierarchy honest
+ * as it grows.</p>
+ *
  * @author Zhang Yanming (25259706)
- * @version 1.0
+ * @version 2.0
  */
-public class HealthProfessional {
+public abstract class HealthProfessional {
 
     /** An identifier must consist of one or more digits and nothing else. */
     private static final Pattern ID_PATTERN = Pattern.compile("\\d+");
 
     /** Width used to align the labels of the printed detail block. */
-    private static final int LABEL_WIDTH = 15;
+    private static final int LABEL_WIDTH = 16;
 
     /** Unique identifier of the professional; digits only. */
     private final String id;
@@ -122,6 +127,27 @@ public class HealthProfessional {
     }
 
     /**
+     * Returns the kind of health professional this object represents.
+     *
+     * <p>Abstract because only the subclass knows what it is. It is used by {@link #toString()}
+     * so that every subtype identifies itself in exactly the same place in the output.</p>
+     *
+     * @return a short role label, for example {@code "General Practitioner"}
+     */
+    public abstract String getRoleTitle();
+
+    /**
+     * Describes the duties this professional performs for the health service.
+     *
+     * <p>This is the polymorphic operation of the hierarchy: the manager, the printing loop and
+     * any future report only ever talk to {@code HealthProfessional}, yet each object answers
+     * with its own behaviour.</p>
+     *
+     * @return a one sentence description of the role
+     */
+    public abstract String performRole();
+
+    /**
      * Builds the printed representation of a single labelled field.
      *
      * <p>Provided as a protected helper so subclasses can append their own fields in exactly the
@@ -148,8 +174,60 @@ public class HealthProfessional {
         StringBuilder builder = new StringBuilder();
         appendField(builder, "ID", id);
         appendField(builder, "Name", name);
+        appendField(builder, "Role", getRoleTitle());
         appendField(builder, "Available", Day.format(availableDays));
         return builder.toString().stripTrailing();
+    }
+
+    /**
+     * Compares this professional with another object.
+     *
+     * <p>Two professionals are the same person when they carry the same identifier. Identifiers
+     * are issued by the health service and are unique across every role, so the comparison does
+     * not need to look at the class or the name. This is the definition Part 5 relies on when it
+     * checks whether a professional is already booked in a time slot.</p>
+     *
+     * @param other the object to compare against
+     * @return {@code true} if both objects describe the same professional
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof HealthProfessional)) {
+            return false;
+        }
+        HealthProfessional that = (HealthProfessional) other;
+        return id.equals(that.id);
+    }
+
+    /**
+     * Returns a hash code consistent with {@link #equals(Object)}.
+     *
+     * @return the hash code of the identifier
+     */
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
+
+    /**
+     * Validates free text used by this class and its subclasses.
+     *
+     * <p>Kept protected so subclasses can validate their own fields with the same message style
+     * instead of repeating the null and blank checks.</p>
+     *
+     * @param value     the candidate text
+     * @param fieldName the name of the field, used in the error message
+     * @return the same text, trimmed
+     * @throws IllegalArgumentException if the text is {@code null} or blank
+     */
+    protected static String requireText(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " must not be empty.");
+        }
+        return value.trim();
     }
 
     /**
@@ -179,10 +257,7 @@ public class HealthProfessional {
      * @throws IllegalArgumentException if the name is {@code null} or blank
      */
     private static String validateName(String name) {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("A health professional name must not be empty.");
-        }
-        return name.trim();
+        return requireText(name, "A health professional name");
     }
 
     /**
