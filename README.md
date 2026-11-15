@@ -20,8 +20,8 @@ exercises their behaviour and prints the results to the console.
 | Part | Scope | Status |
 |---|---|---|
 | 1 | Modelling a generic health professional | done |
-| 2 | Specialising into GP / Specialist / Nurse / Dietitian | in progress |
-| 3 | Working with the objects polymorphically in `main` | planned |
+| 2 | Specialising into GP / Specialist / Nurse / Dietitian | done |
+| 3 | Working with the objects polymorphically in `main` | next |
 | 4 | Modelling an appointment (patient, time, professional) | planned |
 | 5 | Managing the collection of appointments | planned |
 | 6 | End-to-end demonstration, including error cases | planned |
