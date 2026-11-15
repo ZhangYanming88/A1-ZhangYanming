@@ -1,0 +1,21 @@
+# Compiled bytecode
+*.class
+out/
+bin/
+target/
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+nbproject/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Local logs
+*.log
