@@ -36,9 +36,6 @@ public abstract class HealthProfessional {
     /** An identifier must consist of one or more digits and nothing else. */
     private static final Pattern ID_PATTERN = Pattern.compile("\\d+");
 
-    /** Width used to align the labels of the printed detail block. */
-    private static final int LABEL_WIDTH = 16;
-
     /** Unique identifier of the professional; digits only. */
     private final String id;
 
@@ -158,7 +155,7 @@ public abstract class HealthProfessional {
      * @param value   the field value
      */
     protected static void appendField(StringBuilder builder, String label, Object value) {
-        builder.append(String.format("  %-" + LABEL_WIDTH + "s: %s%n", label, value));
+        ConsoleFormat.appendField(builder, label, value);
     }
 
     /**
