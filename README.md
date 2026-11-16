@@ -152,7 +152,7 @@ Each rubric criterion, and where the evidence for it lives in this repository:
 - **Part 4 (15%)** — `Patient`, `Appointment`
 - **Part 5 (15%)** — `AppointmentManager`, `ClinicSchedule`
 - **Part 6 (10%)** — `AssignmentOne.demonstrateAppointmentSystem`
-- **Video (10%)** — four pillars walkthrough; script in `docs/A1-视频演讲稿与演示流程.docx`
+- **Video (10%)** — four pillars walkthrough; script in `A1-视频演讲稿与演示流程.docx` (project root, not included in the submission zip)
 - **Professional practice (10%)** — this repository's commit history, the WakaTime report and the Javadoc throughout
 
 ## 7. The four pillars, and where to find them
