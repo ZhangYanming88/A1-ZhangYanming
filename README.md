@@ -21,10 +21,10 @@ exercises their behaviour and prints the results to the console.
 |---|---|---|
 | 1 | Modelling a generic health professional | done |
 | 2 | Specialising into GP / Specialist / Nurse / Dietitian | done |
-| 3 | Working with the objects polymorphically in `main` | next |
-| 4 | Modelling an appointment (patient, time, professional) | planned |
-| 5 | Managing the collection of appointments | planned |
-| 6 | End-to-end demonstration, including error cases | planned |
+| 3 | Working with the objects polymorphically in `main` | done |
+| 4 | Modelling an appointment (patient, time, professional) | done |
+| 5 | Managing the collection of appointments | done |
+| 6 | End-to-end demonstration, including error cases | done |
 
 ## 3. How to build and run
 
@@ -33,7 +33,10 @@ javac -d out src/*.java
 java -cp out AssignmentOne
 ```
 
-## 4. Class design (Parts 1–2)
+Expected output is 400+ lines: a banner, the nine professionals with their duties, then the
+appointment system, with each operation reporting its result.
+
+## 4. Class design
 
 ```mermaid
 classDiagram
@@ -42,15 +45,12 @@ classDiagram
         -String id
         -String name
         -EnumSet~Day~ availableDays
-        +HealthProfessional(id, name, days)
-        +HealthProfessional(id, name)
         +getRoleTitle()* String
         +performRole()* String
         +getAvailableDays() EnumSet~Day~
         +isAvailableOn(day) boolean
         +equals(obj) boolean
         +hashCode() int
-        +toString() String
     }
     class Day {
         <<enumeration>>
@@ -61,7 +61,6 @@ classDiagram
         FRIDAY
         SATURDAY
         SUNDAY
-        +getDisplayName() String
         +weekdays() EnumSet~Day~
         +format(days) String
     }
@@ -72,6 +71,7 @@ classDiagram
     class Specialist {
         -String specialty
         +prescribe(medication, dosage) String
+        +requestDiagnosticTest(test) String
     }
     class Nurse {
         -String ward
@@ -81,15 +81,45 @@ classDiagram
         -String dietaryFocus
         +createMealPlan(patient, kilojoules) String
     }
+    class Patient {
+        -String name
+        -String mobileNumber
+        +normaliseMobile(number) String
+        +equals(obj) boolean
+    }
+    class Appointment {
+        -Patient patient
+        -HealthProfessional professional
+        -LocalTime time
+        +isSameSlotAs(other) boolean
+        +compareTo(other) int
+    }
+    class ClinicSchedule {
+        -List~LocalTime~ slots
+        +isBookableSlot(time) boolean
+        +describe() String
+    }
+    class AppointmentManager {
+        -List~Appointment~ appointments
+        -ClinicSchedule schedule
+        +addAppointment(patient, professional, time) String
+        +cancelAppointment(professionalId, time) String
+        +cancelAppointment(mobileNumber) String
+        +findByProfessional(id) List
+        +findByPatientNumber(number) List
+        +sortByTime(list) List
+    }
 
     HealthProfessional <|-- GeneralPractitioner
     HealthProfessional <|-- Specialist
     HealthProfessional <|-- Nurse
     HealthProfessional <|-- Dietitian
     HealthProfessional ..> Day : works on
+    Appointment --> Patient
+    Appointment --> HealthProfessional
+    AppointmentManager o-- Appointment
+    AppointmentManager --> ClinicSchedule
 ```
-
-The appointment side (Parts 4–6) is not shown yet; it is added in the next commit series.
 
 ## 5. Design decisions and why
 
@@ -101,19 +131,35 @@ The appointment side (Parts 4–6) is not shown yet; it is added in the next com
 | 4 | ID kept as `String`, validated against `\d+` | `int` | An identifier is a label, not a quantity: it is never added or compared numerically, and leading zeros must survive. Validation still enforces "numbers only". |
 | 5 | Two constructors per class (full and shortened) | one constructor only | Most professionals work a standard week, so the shortened form removes noise at the call site. The full form still exists for part-timers. |
 | 6 | `toString()` overridden, subclasses append to `super.toString()` | a separate `print()` method | The brief asks that printing an object shows its details; overriding `toString` is the Java idiom and lets a whole collection be printed in one loop. Appending to `super.toString()` reuses the shared block instead of duplicating it. |
-| 7 | Shared field formatting factored into `appendField(...)` | repeating `printf` in each subclass | Label alignment is defined in exactly one place, so all four subclasses print consistently. |
+| 7 | Shared formatting in `ConsoleFormat`, shared validation in `Validation` | repeating `printf` and `if (x == null)` in every class | Both rules are needed by the professional hierarchy, the patient and the appointment. Expressing each once means every class prints and rejects input the same way. |
 | 8 | Invalid input rejected with `IllegalArgumentException` in the constructor | accepting anything and validating later | An object that exists is always valid, which removes a whole class of "check before you use it" logic from the rest of the program. |
-| 9 | `equals`/`hashCode` based on the ID only | default reference equality | Two objects holding the same ID are the same person as far as the service is concerned. This is what allows Part 5 to detect a double booking. |
+| 9 | `equals`/`hashCode` on `HealthProfessional` based on the ID, on `Patient` based on the mobile number | default reference equality | Two objects holding the same identifier are the same person as far as the service is concerned. This is what allows Part 5 to detect a double booking. |
+| 10 | `Patient` is its own class | two `String` fields inside `Appointment` | A patient exists before any appointment, can hold several, and owns the rule that decides whether a mobile number is valid — so the rule is written once and cannot be bypassed. |
+| 11 | Appointment time is a `LocalTime` | `String`, `int`, `Date` | `LocalTime` is already `Comparable`, so ordering the day is correct by construction instead of relying on text that happens to sort well until the clinic switches to a 12 hour clock. |
+| 12 | `Appointment` implements `Comparable<Appointment>` with the professional ID as tie-break | sorting in the caller with ad hoc comparisons | The ordering rule belongs to the type being ordered; a stable tie-break also makes the demonstration identical on every run. |
+| 13 | Slot validity and double booking are enforced by `AppointmentManager`, not by `Appointment` | every appointment validating against a global schedule | Both checks need a view of the whole clinic (its hours, and everyone's bookings), which a single appointment does not have. Keeping them in the manager also means the schedule can change without touching `Appointment`. |
+| 14 | `AppointmentManager` uses an `ArrayList` | `HashSet`, `HashMap` keyed by professional | The day is iterated in booking order and sorted often; two appointments at the same time for different professionals must both be storable; "show me the whole day" is a plain iteration. The collection is tiny, so linear scans are not a concern. |
+| 15 | Every manager operation returns a message | methods that print, or that return `void` | The manager should not decide how the clinic talks to its staff, and returning the outcome makes the operations easy to test and to reuse behind a future UI. |
+| 16 | `ClinicSchedule` built from opening time, closing time and slot length | a hard coded array of 16 times | Changing the clinic's hours becomes a one line change that every other class picks up, which is what Part 5 asks for. |
 
 ## 6. Assessment mapping
 
 Each rubric criterion, and where the evidence for it lives in this repository:
 
 - **Part 1 (10%)** — `HealthProfessional`, `Day`
-- **Part 2 (20%)** — `HealthProfessional` abstract contract + the four subclasses
-- **Part 3 (10%)** — the polymorphism block in `AssignmentOne.main`
+- **Part 2 (20%)** — the abstract contract plus `GeneralPractitioner`, `Specialist`, `Nurse`, `Dietitian`
+- **Part 3 (10%)** — `AssignmentOne.demonstrateProfessionals`
 - **Part 4 (15%)** — `Patient`, `Appointment`
 - **Part 5 (15%)** — `AppointmentManager`, `ClinicSchedule`
-- **Part 6 (10%)** — the demonstration block in `AssignmentOne.main`
-- **Video (10%)** — four pillars walkthrough, linked in the Blackboard submission comments
-- **Professional practice (10%)** — this repository's commit history, WakaTime report and Javadoc
+- **Part 6 (10%)** — `AssignmentOne.demonstrateAppointmentSystem`
+- **Video (10%)** — four pillars walkthrough; script in `docs/A1-视频演讲稿与演示流程.docx`
+- **Professional practice (10%)** — this repository's commit history, the WakaTime report and the Javadoc throughout
+
+## 7. The four pillars, and where to find them
+
+| Pillar | Where | What to say |
+|---|---|---|
+| Encapsulation | `HealthProfessional` fields, `Patient.normaliseMobile`, `Validation` | State is private and only reachable through validated operations, so invalid objects cannot be built. |
+| Abstraction | `HealthProfessional` (abstract) + `AppointmentManager`'s API | The abstract class names what every professional must be able to do without saying how; the manager hides the collection behind operations like `addAppointment`. |
+| Inheritance | the four subclasses and `super.toString()` | Shared identity, roster and printing are written once in the base class and reused by all four types. |
+| Polymorphism | `List<HealthProfessional>` in `AssignmentOne`, `Appointment.compareTo` | One loop calls `toString()` and `performRole()` and gets four different behaviours; `compareTo` lets any list sort itself. |
